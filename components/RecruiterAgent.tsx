@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { User, Linkedin, Mail, MessageSquare, Loader2, Copy, Check, Clock, Send, PenTool, X, Sparkles, FileSignature } from 'lucide-react';
-import { Recruiter, UserProfile } from '../types';
+import { useApp } from '../contexts/AppContext';
+import { Recruiter } from '../types';
 import { generateOutreachSequence, generateEmailSignature } from '../services/geminiService';
 
 const MOCK_RECRUITERS: Recruiter[] = [
@@ -38,11 +39,9 @@ const MOCK_RECRUITERS: Recruiter[] = [
   }
 ];
 
-interface RecruiterAgentProps {
-  userProfile: UserProfile;
-}
-
-const RecruiterAgent: React.FC<RecruiterAgentProps> = ({ userProfile }) => {
+const RecruiterAgent: React.FC = () => {
+  const { userProfile } = useApp();
+  
   const [recruiters, setRecruiters] = useState<Recruiter[]>(MOCK_RECRUITERS);
   const [selectedRecruiter, setSelectedRecruiter] = useState<Recruiter | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);

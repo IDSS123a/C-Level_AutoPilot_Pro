@@ -64,7 +64,7 @@ const OpportunityScanner: React.FC = () => {
           urgency: analysis.urgency as any || "Medium",
           ai_analysis: {
             fit: analysis.fit,
-            gaps: analysis.gaps,
+            gaps: analysis.gaps || [],
             strategy: analysis.strategy
           },
           status: 'Analyzing'
@@ -158,7 +158,7 @@ const OpportunityScanner: React.FC = () => {
                             <p className="text-sm text-slate-300">{job.ai_analysis.strategy}</p>
                         </div>
                     </div>
-                    {job.ai_analysis.gaps.length > 0 && (
+                    {job.ai_analysis.gaps && job.ai_analysis.gaps.length > 0 && (
                         <div className="bg-amber-900/10 px-4 py-2 border-t border-amber-500/10">
                             <p className="text-xs text-amber-400/80"><span className="font-bold">Gap Mitigation:</span> {job.ai_analysis.gaps.join(", ")}</p>
                         </div>

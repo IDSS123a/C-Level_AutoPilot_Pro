@@ -1,20 +1,18 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Settings, LogOut } from 'lucide-react';
-import { View, UserProfile } from '../types';
+import { LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Settings, LogOut, Building2 } from 'lucide-react';
+import { View } from '../types';
+import { useApp } from '../contexts/AppContext';
 
-interface SidebarProps {
-  currentView: View;
-  onNavigate: (view: View) => void;
-  userProfile: UserProfile;
-}
+const Sidebar: React.FC = () => {
+  const { currentView, setCurrentView, userProfile } = useApp();
 
-const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, userProfile }) => {
   const navItems = [
     { id: View.DASHBOARD, icon: LayoutDashboard, label: 'Command Center' },
     { id: View.CV_ANALYSIS, icon: FileText, label: 'CV Architect' },
     { id: View.OPPORTUNITIES, icon: Briefcase, label: 'Opportunity Mining' },
     { id: View.RECRUITERS, icon: Users, label: 'Recruiter Agent' },
     { id: View.COMMUNICATION, icon: MessageSquare, label: 'Comms Hub' },
+    { id: View.DUE_DILIGENCE, icon: Building2, label: 'Due Diligence' },
   ];
 
   return (
@@ -32,7 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, userProfile 
         {navItems.map(item => (
           <button
             key={item.id}
-            onClick={() => onNavigate(item.id)}
+            onClick={() => setCurrentView(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
               currentView === item.id 
                 ? 'bg-brand-600/10 text-brand-400 border border-brand-600/20' 
@@ -50,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate, userProfile 
 
       <div className="p-4 border-t border-slate-800">
         <button 
-          onClick={() => onNavigate(View.SETTINGS)}
+          onClick={() => setCurrentView(View.SETTINGS)}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
              currentView === View.SETTINGS 
                 ? 'bg-slate-900 text-brand-400' 

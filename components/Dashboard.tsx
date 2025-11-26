@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
-import { Activity, TrendingUp, Users, Briefcase, Zap, Target, Crosshair, BrainCircuit } from 'lucide-react';
+import { Activity, TrendingUp, Users, Briefcase, Zap, Target, Crosshair, BrainCircuit, Coffee, Play } from 'lucide-react';
 import { AgentLog, StrategyBrief } from '../types';
-import { generateCampaignStrategy } from '../services/geminiService';
+import { generateCampaignStrategy, generateMorningBriefing } from '../services/geminiService';
 
 interface DashboardProps {
   logs: AgentLog[];
@@ -22,16 +22,52 @@ const data = [
 
 const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
   const [strategy, setStrategy] = useState<StrategyBrief | null>(null);
+  const [morningBriefing, setMorningBriefing] = useState<string>('');
+  const [loadingBriefing, setLoadingBriefing] = useState(true);
 
   useEffect(() => {
     // Autonomous Agent: Campaign Strategist running...
     generateCampaignStrategy({ applications: 29, interviews: 4, responseRate: "12%" })
       .then(setStrategy)
       .catch(console.error);
+    
+    // Generate Morning Briefing
+    generateMorningBriefing("John", 12)
+      .then((text) => {
+        setMorningBriefing(text);
+        setLoadingBriefing(false);
+      })
+      .catch((e) => {
+        console.error(e);
+        setLoadingBriefing(false);
+      });
   }, []);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto animate-fade-in">
+      
+      {/* Morning Briefing Card - NEW */}
+      <div className="bg-gradient-to-r from-indigo-900/40 to-slate-900 border border-indigo-500/30 p-6 rounded-xl relative overflow-hidden">
+        <div className="relative z-10 flex items-start gap-4">
+           <div className="p-3 bg-indigo-500/20 rounded-full text-indigo-400">
+             <Coffee size={24} />
+           </div>
+           <div className="flex-1">
+             <h3 className="text-lg font-bold text-white mb-1">Morning Executive Briefing</h3>
+             {loadingBriefing ? (
+               <div className="h-4 bg-slate-800 rounded w-2/3 animate-pulse"></div>
+             ) : (
+               <p className="text-indigo-100/80 text-sm leading-relaxed max-w-3xl italic">
+                 "{morningBriefing}"
+               </p>
+             )}
+           </div>
+           <button className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors">
+              <Play size={12} fill="currentColor" /> Listen
+           </button>
+        </div>
+      </div>
+
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-sm hover:border-brand-500 transition-colors group">
@@ -152,12 +188,16 @@ const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
               <div>
                 <p className="text-xs text-slate-500 font-semibold uppercase mb-2">Priority Actions</p>
                 <ul className="space-y-2">
-                  {strategy.top_priorities.map((action, i) => (
-                    <li key={i} className="flex items-start text-sm text-slate-300">
-                      <span className="text-brand-500 mr-2 mt-0.5">•</span>
-                      {action}
-                    </li>
-                  ))}
+                  {strategy.top_priorities && strategy.top_priorities.length > 0 ? (
+                    strategy.top_priorities.map((action, i) => (
+                      <li key={i} className="flex items-start text-sm text-slate-300">
+                        <span className="text-brand-500 mr-2 mt-0.5">•</span>
+                        {action}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-sm text-slate-500 italic">No priorities generated.</li>
+                  )}
                 </ul>
               </div>
 
@@ -187,13 +227,14 @@ const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
           Autonomous Agent Logs
         </h3>
         <div className="space-y-3 max-h-60 overflow-y-auto pr-2 font-mono text-sm">
-          {logs.slice().reverse().map((log) => (
+          {logs && logs.slice().reverse().map((log) => (
             <div key={log.id} className="flex items-center space-x-3 border-b border-slate-800/50 pb-2 last:border-0">
               <span className="text-[10px] text-slate-600 w-16">{log.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded w-32 text-center ${
                 log.agent === 'Campaign Strategist' ? 'bg-purple-900/50 text-purple-400' :
                 log.agent === 'Opportunity Miner' ? 'bg-blue-900/50 text-blue-400' :
                 log.agent === 'Comms Orchestrator' ? 'bg-emerald-900/50 text-emerald-400' :
+                log.agent === 'Due Diligence' ? 'bg-amber-900/50 text-amber-400' :
                 'bg-slate-800 text-slate-400'
               }`}>
                 {log.agent}

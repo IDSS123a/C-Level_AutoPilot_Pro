@@ -2,44 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { 
   Save, User, Shield, Zap, Bell, Globe, 
   Linkedin, Mail, Calendar, ToggleLeft, ToggleRight, 
-  Check, Sliders, AlertTriangle, Upload, FileText, Briefcase, DollarSign, MapPin, Link as LinkIcon
+  Check, Sliders, AlertTriangle, Upload, FileText, Briefcase, DollarSign, MapPin, Link as LinkIcon, Ghost, EyeOff, BarChart3
 } from 'lucide-react';
-import { UserProfile } from '../types';
+import { useApp } from '../contexts/AppContext';
+import { UserProfile, AppSettings } from '../types';
 
-interface SettingsProps {
-  currentProfile: UserProfile;
-  onSave: (profile: UserProfile) => void;
-}
-
-const Settings: React.FC<SettingsProps> = ({ currentProfile, onSave }) => {
+const Settings: React.FC = () => {
+  const { userProfile, updateUserProfile, appSettings, updateAppSettings } = useApp();
+  
   const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'integrations'>('profile');
   const [isSaving, setIsSaving] = useState(false);
   
-  const [profile, setProfile] = useState<UserProfile>(currentProfile);
+  // Local state for forms, synchronized with global state on mount/change
+  const [profile, setProfile] = useState<UserProfile>(userProfile);
+  const [rules, setRules] = useState<AppSettings>(appSettings);
 
-  // Sync internal state if props change (e.g. initial load)
   useEffect(() => {
-    setProfile(currentProfile);
-  }, [currentProfile]);
+    setProfile(userProfile);
+  }, [userProfile]);
 
-  const [rules, setRules] = useState({
-    autoApply: false,
-    minMatchScore: 85,
-    dailyOutreachLimit: 25,
-    workingHoursStart: '08:00',
-    workingHoursEnd: '19:00',
-    humanApprovalRequired: true,
-    regions: {
-      dach: true,
-      see: true,
-      uk: false,
-      us: false
-    }
-  });
+  useEffect(() => {
+    setRules(appSettings);
+  }, [appSettings]);
 
   const handleSaveClick = () => {
     setIsSaving(true);
-    onSave(profile);
+    updateUserProfile(profile);
+    updateAppSettings(rules);
+    
     // Simulate API delay
     setTimeout(() => {
       setIsSaving(false);
@@ -308,6 +298,29 @@ const Settings: React.FC<SettingsProps> = ({ currentProfile, onSave }) => {
           {activeTab === 'agents' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
               
+              {/* STEALTH MODE */}
+              <div>
+                <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2 mb-4 flex items-center">
+                    <Ghost size={20} className="mr-2 text-purple-400"/> Stealth & Security
+                </h3>
+                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-sm font-bold text-white flex items-center gap-2">
+                          Ghost Mode <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase ${rules.ghostMode ? 'bg-purple-900/50 text-purple-300' : 'bg-slate-800 text-slate-500'}`}>{rules.ghostMode ? 'Active' : 'Disabled'}</span>
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1 max-w-lg">
+                          Automatically blocks current employer domains, hides profile from specific recruiter firms, and anonymizes initial outreach data.
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setRules({...rules, ghostMode: !rules.ghostMode})}
+                      className={`text-2xl transition-colors ${rules.ghostMode ? 'text-purple-400' : 'text-slate-600'}`}
+                    >
+                      {rules.ghostMode ? <ToggleRight size={36}/> : <ToggleLeft size={36}/>}
+                    </button>
+                </div>
+              </div>
+
               {/* Thresholds */}
               <div>
                 <h3 className="text-lg font-bold text-white border-b border-slate-800 pb-2 mb-4">Decision Thresholds</h3>
@@ -373,6 +386,21 @@ const Settings: React.FC<SettingsProps> = ({ currentProfile, onSave }) => {
                       className={`text-2xl transition-colors ${rules.humanApprovalRequired ? 'text-brand-400' : 'text-slate-600'}`}
                     >
                       {rules.humanApprovalRequired ? <ToggleRight size={32}/> : <ToggleLeft size={32}/>}
+                    </button>
+                  </div>
+
+                   <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white flex items-center gap-2">
+                          <BarChart3 size={14} className="text-emerald-400"/> Salary Benchmarking
+                      </p>
+                      <p className="text-xs text-slate-500">Real-time comparison with market</p>
+                    </div>
+                    <button 
+                      onClick={() => setRules({...rules, salaryBenchmarking: !rules.salaryBenchmarking})}
+                      className={`text-2xl transition-colors ${rules.salaryBenchmarking ? 'text-emerald-400' : 'text-slate-600'}`}
+                    >
+                      {rules.salaryBenchmarking ? <ToggleRight size={32}/> : <ToggleLeft size={32}/>}
                     </button>
                   </div>
                 </div>

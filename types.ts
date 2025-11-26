@@ -4,6 +4,7 @@ export enum View {
   OPPORTUNITIES = 'OPPORTUNITIES',
   RECRUITERS = 'RECRUITERS',
   COMMUNICATION = 'COMMUNICATION',
+  DUE_DILIGENCE = 'DUE_DILIGENCE',
   SETTINGS = 'SETTINGS'
 }
 
@@ -22,6 +23,23 @@ export interface UserProfile {
   currency: string;
   bio: string;
   valueProposition: string;
+}
+
+export interface AppSettings {
+  autoApply: boolean;
+  minMatchScore: number;
+  dailyOutreachLimit: number;
+  workingHoursStart: string;
+  workingHoursEnd: string;
+  humanApprovalRequired: boolean;
+  ghostMode: boolean;
+  salaryBenchmarking: boolean;
+  regions: {
+    dach: boolean;
+    see: boolean;
+    uk: boolean;
+    us: boolean;
+  };
 }
 
 export interface Opportunity {
@@ -63,7 +81,7 @@ export interface Recruiter {
 export interface AgentLog {
   id: string;
   timestamp: Date;
-  agent: 'CV Analyst' | 'Recruiter Discovery' | 'Opportunity Miner' | 'Comms Orchestrator' | 'Campaign Strategist';
+  agent: 'CV Analyst' | 'Recruiter Discovery' | 'Opportunity Miner' | 'Comms Orchestrator' | 'Campaign Strategist' | 'Due Diligence';
   message: string;
   status: 'info' | 'success' | 'warning';
 }
@@ -95,4 +113,22 @@ export interface ChartDataPoint {
   applications: number;
   responses: number;
   interviews: number;
+}
+
+export interface CompanyDossier {
+  companyName: string;
+  marketCap?: string;
+  headquarters: string;
+  executiveSummary: string;
+  keyChallenges: string[];
+  strategicOpportunities: string[];
+  cultureAnalysis: string;
+  interviewQuestions: {
+    expected_from_ceo: string[];
+    to_ask_ceo: string[];
+  };
+  sources?: {
+    title: string;
+    uri: string;
+  }[];
 }
