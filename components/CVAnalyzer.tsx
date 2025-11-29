@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { FileText, BrainCircuit, AlertTriangle, CheckCircle, Loader2, Trophy, Target, Scale, Plus } from 'lucide-react';
+import { FileText, BrainCircuit, Scale, Loader2 } from 'lucide-react';
 import { analyzeCVContent, analyzeSkillGap } from '../services/geminiService';
 import { CVAnalysisResult, SkillGapAnalysisResult } from '../types';
+import CVResults from './cv/CVResults';
 
 const CVAnalyzer: React.FC = () => {
   const [cvText, setCvText] = useState<string>('');
@@ -133,164 +134,12 @@ VP Engineering - TechStart Inc (2015 - 2019)
       </div>
 
       {/* Output Section */}
-      <div className="flex flex-col bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-full">
-         
-         {/* Tabs */}
-         <div className="flex border-b border-slate-800">
-             <button 
-                onClick={() => setActiveTab('general')}
-                className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === 'general' ? 'border-brand-500 text-white bg-brand-500/5' : 'border-transparent text-slate-500 hover:text-slate-300'
-                }`}
-             >
-                 General Profile
-             </button>
-             <button 
-                onClick={() => setActiveTab('gap')}
-                disabled={!gapResult}
-                className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    activeTab === 'gap' ? 'border-emerald-500 text-white bg-emerald-500/5' : 'border-transparent text-slate-500 disabled:opacity-50 hover:text-slate-300'
-                }`}
-             >
-                 Role Fit Analysis
-             </button>
-         </div>
-
-         {/* Content */}
-         <div className="flex-1 overflow-y-auto p-6">
-            {activeTab === 'general' ? (
-                result ? (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        {/* Score Header */}
-                        <div className="flex items-center justify-between mb-6 border-b border-slate-800 pb-6">
-                        <div>
-                            <h3 className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Executive Readiness Score</h3>
-                            <div className="text-5xl font-bold text-white mt-2">{result.score}<span className="text-lg text-slate-500 font-normal">/100</span></div>
-                        </div>
-                        <div className="text-right">
-                            <h4 className="text-xs uppercase tracking-wider text-brand-400 font-semibold mb-1">Strategic Positioning</h4>
-                            <p className="text-slate-300 text-sm italic max-w-xs leading-tight">"{result.strategic_positioning}"</p>
-                        </div>
-                        </div>
-
-                        {/* Analysis Grid */}
-                        <div className="space-y-6">
-                        <div>
-                            <h4 className="flex items-center text-emerald-400 font-medium mb-3 text-sm uppercase tracking-wide">
-                            <CheckCircle size={16} className="mr-2" /> Competitive Strengths
-                            </h4>
-                            <div className="grid grid-cols-1 gap-2">
-                            {result.strengths.map((s, i) => (
-                                <div key={i} className="bg-emerald-900/10 border border-emerald-500/10 px-3 py-2 rounded text-sm text-slate-300">
-                                {s}
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-
-                        <div>
-                            <h4 className="flex items-center text-amber-400 font-medium mb-3 text-sm uppercase tracking-wide">
-                            <AlertTriangle size={16} className="mr-2" /> Market Gaps
-                            </h4>
-                            <div className="grid grid-cols-1 gap-2">
-                            {result.weaknesses.map((w, i) => (
-                                <div key={i} className="bg-amber-900/10 border border-amber-500/10 px-3 py-2 rounded text-sm text-slate-300">
-                                {w}
-                                </div>
-                            ))}
-                            </div>
-                        </div>
-
-                        {result.quantified_achievements && result.quantified_achievements.length > 0 && (
-                            <div>
-                                <h4 className="flex items-center text-brand-400 font-medium mb-3 text-sm uppercase tracking-wide">
-                                    <Trophy size={16} className="mr-2" /> Achievement Impact
-                                </h4>
-                                <ul className="space-y-2">
-                                    {result.quantified_achievements.map((q, i) => (
-                                        <li key={i} className="flex items-start text-sm text-slate-400">
-                                            <Target size={14} className="mr-2 mt-0.5 text-brand-500 flex-shrink-0"/>
-                                            {q}
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
-                        </div>
-
-                        <div className="mt-6 pt-4 border-t border-slate-800">
-                        <h4 className="text-xs font-semibold text-slate-500 mb-2 uppercase">Executive Summary</h4>
-                        <p className="text-slate-300 text-sm leading-relaxed">{result.summary}</p>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-600 dashed-border">
-                        <div className="w-16 h-16 bg-slate-800/50 rounded-full flex items-center justify-center mb-4">
-                        <BrainCircuit size={32} className="opacity-50" />
-                        </div>
-                        <p className="text-lg font-medium">No Analysis Yet</p>
-                        <p className="text-sm mt-2 max-w-xs text-center">Paste CV text to inspect executive readiness.</p>
-                    </div>
-                )
-            ) : (
-                gapResult ? (
-                    <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className={`w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold border-4 ${
-                                gapResult.match_score >= 80 ? 'border-emerald-500 text-emerald-400' : 
-                                gapResult.match_score >= 60 ? 'border-amber-500 text-amber-400' : 'border-red-500 text-red-400'
-                            }`}>
-                                {gapResult.match_score}%
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-white">Role Alignment Score</h3>
-                                <p className="text-sm text-slate-400">Match against specific job requirements</p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-6">
-                             <div>
-                                <h4 className="flex items-center text-red-400 font-medium mb-3 text-sm uppercase tracking-wide">
-                                    <AlertTriangle size={16} className="mr-2" /> Missing Critical Skills
-                                </h4>
-                                {gapResult.missing_critical_skills.length > 0 ? (
-                                    <ul className="space-y-2">
-                                        {gapResult.missing_critical_skills.map((skill, i) => (
-                                            <li key={i} className="flex items-center text-sm text-slate-300 bg-red-900/10 px-3 py-2 rounded border border-red-500/10">
-                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 mr-2"></div>
-                                                {skill}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                ) : (
-                                    <p className="text-sm text-slate-500 italic">No critical skills missing found.</p>
-                                )}
-                             </div>
-
-                             <div>
-                                <h4 className="flex items-center text-blue-400 font-medium mb-3 text-sm uppercase tracking-wide">
-                                    <Plus size={16} className="mr-2" /> Tailoring Recommendations
-                                </h4>
-                                <div className="space-y-3">
-                                    {gapResult.recommendations.map((rec, i) => (
-                                        <div key={i} className="bg-blue-900/10 border border-blue-500/10 p-3 rounded-lg">
-                                            <p className="text-sm text-slate-300 leading-relaxed">{rec}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                             </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-slate-600 dashed-border">
-                        <Scale size={48} className="opacity-50 mb-4" />
-                        <p className="font-medium">Gap Analysis Required</p>
-                        <p className="text-sm mt-2 max-w-xs text-center">Paste both a CV and a Job Description on the left to run this analysis.</p>
-                    </div>
-                )
-            )}
-         </div>
-      </div>
+      <CVResults 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        result={result} 
+        gapResult={gapResult} 
+      />
     </div>
   );
 };

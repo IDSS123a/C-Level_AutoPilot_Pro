@@ -1,14 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { Activity, TrendingUp, Users, Briefcase, Zap, Target, Crosshair, BrainCircuit, Coffee, Play } from 'lucide-react';
-import { AgentLog, StrategyBrief } from '../types';
+import { StrategyBrief } from '../types';
+import { useLogStore } from '../store/useLogStore';
 import { generateCampaignStrategy, generateMorningBriefing } from '../services/geminiService';
-
-interface DashboardProps {
-  logs: AgentLog[];
-}
 
 const data = [
   { name: 'Mon', applications: 4, responses: 1, interviews: 0 },
@@ -20,26 +17,40 @@ const data = [
   { name: 'Sun', applications: 1, responses: 0, interviews: 0 },
 ];
 
-const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
+const Dashboard: React.FC = () => {
+  const { agentLogs } = useLogStore();
   const [strategy, setStrategy] = useState<StrategyBrief | null>(null);
   const [morningBriefing, setMorningBriefing] = useState<string>('');
   const [loadingBriefing, setLoadingBriefing] = useState(true);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Autonomous Agent: Campaign Strategist running...
     generateCampaignStrategy({ applications: 29, interviews: 4, responseRate: "12%" })
-      .then(setStrategy)
+      .then(res => {
+        if (isMounted.current) setStrategy(res);
+      })
       .catch(console.error);
     
     // Generate Morning Briefing
     generateMorningBriefing("John", 12)
       .then((text) => {
-        setMorningBriefing(text);
-        setLoadingBriefing(false);
+        if (isMounted.current) {
+          setMorningBriefing(text);
+          setLoadingBriefing(false);
+        }
       })
       .catch((e) => {
-        console.error(e);
-        setLoadingBriefing(false);
+        if (isMounted.current) {
+          console.error(e);
+          setLoadingBriefing(false);
+        }
       });
   }, []);
 
@@ -227,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ logs }) => {
           Autonomous Agent Logs
         </h3>
         <div className="space-y-3 max-h-60 overflow-y-auto pr-2 font-mono text-sm">
-          {logs && logs.slice().reverse().map((log) => (
+          {agentLogs && agentLogs.slice().map((log) => (
             <div key={log.id} className="flex items-center space-x-3 border-b border-slate-800/50 pb-2 last:border-0">
               <span className="text-[10px] text-slate-600 w-16">{log.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded w-32 text-center ${

@@ -1,4 +1,6 @@
 import { GoogleGenAI, Type } from "@google/genai";
+import { PROMPTS } from '../lib/prompts';
+import * as MOCK from '../lib/mockData';
 
 // Initialize Gemini Client
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -12,15 +14,7 @@ export const analyzeCVContent = async (cvText: string) => {
     const model = "gemini-3-pro-preview";
     const response = await ai.models.generateContent({
       model,
-      contents: `You are an expert C-Level Executive Career Coach. Perform a deep semantic analysis of the following CV.
-      
-      Your mission:
-      1. Quantify achievements where numbers are missing but implied.
-      2. Identify strategic gaps against typical Fortune 500 C-suite requirements.
-      3. Craft a "Strategic Positioning" statement for DACH/SEE regions.
-      
-      CV TEXT:
-      ${cvText}`,
+      contents: PROMPTS.CV_ANALYSIS(cvText),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -31,16 +25,41 @@ export const analyzeCVContent = async (cvText: string) => {
             strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
             weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
             strategic_positioning: { type: Type.STRING },
-            quantified_achievements: { type: Type.ARRAY, items: { type: Type.STRING } }
+            quantified_achievements: { type: Type.ARRAY, items: { type: Type.STRING } },
+            sub_scores: {
+              type: Type.OBJECT,
+              properties: {
+                leadership: { type: Type.INTEGER },
+                leadership_rationale: { type: Type.STRING },
+                impact: { type: Type.INTEGER },
+                impact_rationale: { type: Type.STRING },
+                communication: { type: Type.INTEGER },
+                communication_rationale: { type: Type.STRING }
+              }
+            }
           }
         }
       }
     });
 
-    return JSON.parse(response.text || "{}");
+    const text = response.text || "{}";
+    const json = JSON.parse(text);
+    return {
+      score: json.score || 0,
+      summary: json.summary || "No summary available.",
+      strengths: json.strengths || [],
+      weaknesses: json.weaknesses || [],
+      strategic_positioning: json.strategic_positioning || "Positioning analysis pending.",
+      quantified_achievements: json.quantified_achievements || [],
+      sub_scores: json.sub_scores || { 
+        leadership: 0, leadership_rationale: "Analysis pending",
+        impact: 0, impact_rationale: "Analysis pending",
+        communication: 0, communication_rationale: "Analysis pending"
+      }
+    };
   } catch (error) {
-    console.error("CV Analysis Error:", error);
-    throw error;
+    console.warn("CV Analysis API failed, falling back to mock data.", error);
+    return MOCK.CV_ANALYSIS_MOCK;
   }
 };
 
@@ -53,19 +72,7 @@ export const analyzeSkillGap = async (cvText: string, jobDescription: string) =>
     const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model,
-      contents: `You are an expert Technical Recruiter. Compare the following Candidate CV against the specific Job Description.
-      
-      CANDIDATE CV:
-      ${cvText}
-      
-      JOB DESCRIPTION:
-      ${jobDescription}
-      
-      Identify:
-      1. Match Score (0-100) based on critical requirements.
-      2. Missing Critical Skills (Hard or Soft skills explicitly required but not found or weak in CV).
-      3. Tailoring Recommendations (Specific bullet points to add or emphasize).
-      `,
+      contents: PROMPTS.SKILL_GAP(cvText, jobDescription),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -78,10 +85,16 @@ export const analyzeSkillGap = async (cvText: string, jobDescription: string) =>
         }
       }
     });
-    return JSON.parse(response.text || "{}");
+    const text = response.text || "{}";
+    const json = JSON.parse(text);
+    return {
+      match_score: json.match_score || 0,
+      missing_critical_skills: json.missing_critical_skills || [],
+      recommendations: json.recommendations || []
+    };
   } catch (error) {
-    console.error("Skill Gap Analysis Error:", error);
-    throw error;
+    console.warn("Skill Gap API failed, falling back to mock data.", error);
+    return MOCK.SKILL_GAP_MOCK;
   }
 };
 
@@ -94,18 +107,7 @@ export const analyzeOpportunity = async (jobDescription: string, cvContext: stri
     const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model,
-      contents: `Act as a Strategic Headhunter. Evaluate this opportunity for a C-level candidate.
-      
-      CANDIDATE: ${cvContext.substring(0, 500)}...
-      JOB: ${jobDescription}
-      
-      Analyze:
-      1. Role Match Score (0-100)
-      2. Cultural Fit Score (0-100) - prioritizing DACH (Germany, Austria, Switzerland) or SEE (South East Europe) alignment.
-      3. Growth Potential (High/Medium/Low)
-      4. Urgency (High/Medium/Low) based on language.
-      
-      Provide strategy to secure interview.`,
+      contents: PROMPTS.OPPORTUNITY_ANALYSIS(jobDescription, cvContext),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -133,16 +135,8 @@ export const analyzeOpportunity = async (jobDescription: string, cvContext: stri
       urgency: json.urgency || "Low"
     };
   } catch (error) {
-    console.error("Opportunity Analysis Error:", error);
-    return {
-      fit: "Analysis pending manual review.",
-      gaps: [],
-      strategy: "Review manually.",
-      match_score: 0,
-      cultural_fit_score: 0,
-      growth_potential: "Unknown",
-      urgency: "Low"
-    };
+    console.warn("Opportunity Analysis API failed, falling back to mock data.", error);
+    return MOCK.OPPORTUNITY_ANALYSIS_MOCK;
   }
 };
 
@@ -155,18 +149,7 @@ export const generateOutreachSequence = async (recruiterName: string, role: stri
     const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model,
-      contents: `Create a 3-stage executive outreach sequence for a high-value target.
-      
-      Target: ${recruiterName}, ${role} at ${company}.
-      My Profile: ${cvHighlights}
-      
-      Requirements:
-      1. LinkedIn Connection Note (max 300 chars).
-      2. Initial Email (Concise, value-driven).
-      3. Follow-up Email (7 days later, gentle nudge).
-      4. Follow-up Email (14 days later, "closing the loop").
-      
-      Tone: Peer-to-peer, confident, respectful of time.`,
+      contents: PROMPTS.OUTREACH_SEQUENCE(recruiterName, role, company, cvHighlights),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -183,8 +166,8 @@ export const generateOutreachSequence = async (recruiterName: string, role: stri
     });
     return JSON.parse(response.text || "{}");
   } catch (error) {
-    console.error("Outreach Generation Error:", error);
-    throw error;
+    console.warn("Outreach Generation API failed, falling back to mock data.", error);
+    return MOCK.OUTREACH_SEQUENCE_MOCK;
   }
 };
 
@@ -197,14 +180,7 @@ export const generateCampaignStrategy = async (metrics: any) => {
     const model = "gemini-3-pro-preview";
     const response = await ai.models.generateContent({
       model,
-      contents: `You are the Campaign Strategist for an autonomous job search. 
-      Based on these metrics: ${JSON.stringify(metrics)}, generate a weekly plan.
-      
-      Output JSON with:
-      - focus_of_the_week (One impactful sentence)
-      - top_priorities (Array of 3 specific actions)
-      - channel_strategy (Where to focus effort: LinkedIn vs Headhunters vs Direct)
-      - success_probability (Estimated % based on velocity)`,
+      contents: PROMPTS.CAMPAIGN_STRATEGY(metrics),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -227,12 +203,8 @@ export const generateCampaignStrategy = async (metrics: any) => {
       success_probability: json.success_probability || "Calculating..."
     };
   } catch (error) {
-    return {
-      focus_of_the_week: "Maintain current velocity and expand recruiter network.",
-      top_priorities: ["Scan new DACH listings", "Follow up with pending connections", "Refine value proposition"],
-      channel_strategy: "Balanced approach",
-      success_probability: "Calculating..."
-    };
+    console.warn("Strategy API failed, falling back to mock data.", error);
+    return MOCK.CAMPAIGN_STRATEGY_MOCK;
   }
 };
 
@@ -244,22 +216,7 @@ export const generateEmailSignature = async (userProfile: any) => {
     const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model,
-      contents: `Design 3 distinct professional email signatures (HTML format) for:
-      Name: ${userProfile.name}
-      Title: ${userProfile.role}
-      Company: ${userProfile.company}
-      Phone: ${userProfile.phone}
-      Email: ${userProfile.email}
-      Website: ${userProfile.website}
-      Disclaimer: ${userProfile.disclaimer}
-
-      Styles:
-      1. Minimalist (Clean, text-focused, use system fonts)
-      2. Corporate (Professional, with blue accents, organized table layout)
-      3. Executive Brand (Bold name, subtle background or border)
-
-      Return JSON with an array of signatures. Ensure HTML uses inline styles for email compatibility.
-      `,
+      contents: PROMPTS.EMAIL_SIGNATURE(userProfile),
       config: {
         responseMimeType: "application/json",
         responseSchema: {
@@ -282,47 +239,33 @@ export const generateEmailSignature = async (userProfile: any) => {
     const json = JSON.parse(response.text || "{}");
     return { signatures: json.signatures || [] };
   } catch (error) {
-    console.error("Signature Generation Error:", error);
-    return { signatures: [] };
+    console.warn("Signature Generation API failed, falling back to mock data.", error);
+    return MOCK.EMAIL_SIGNATURE_MOCK;
   }
 };
 
 /**
  * DUE DILIGENCE AGENT
  * Generates deep company analysis using Google Search Grounding for real-time data.
+ * Supports Cancellation via AbortSignal.
  */
-export const generateCompanyDossier = async (companyName: string, industry: string) => {
+export const generateCompanyDossier = async (companyName: string, industry: string, signal?: AbortSignal) => {
   try {
-    // IMPORTANT: responseSchema and responseMimeType are NOT supported when using googleSearch tool.
-    // We must parse the JSON manually from the text response.
     const model = "gemini-3-pro-preview";
+    
+    // Check abort before starting request
+    if (signal?.aborted) throw new Error("Request aborted");
+
     const response = await ai.models.generateContent({
       model,
-      contents: `Perform a deep C-Level Due Diligence on the company: "${companyName}" (Industry: ${industry}).
-      
-      You MUST use the Google Search tool to find the most recent real-world data (financials, news, active status).
-      If the company is closed, inactive, or bankrupt, explicitly state that in the executive summary.
-      
-      Return a VALID JSON object (and nothing else) matching this structure:
-      {
-        "companyName": "string",
-        "marketCap": "string",
-        "headquarters": "string",
-        "executiveSummary": "string",
-        "keyChallenges": ["string", "string"],
-        "strategicOpportunities": ["string", "string"],
-        "cultureAnalysis": "string",
-        "interviewQuestions": {
-          "expected_from_ceo": ["string"],
-          "to_ask_ceo": ["string"]
-        }
-      }`,
+      contents: PROMPTS.COMPANY_DOSSIER(companyName, industry),
       config: {
         tools: [{ googleSearch: {} }],
-        // responseMimeType: "application/json", // REMOVED: Incompatible with googleSearch
-        // responseSchema: ... // REMOVED: Incompatible with googleSearch
       }
     });
+
+    // Check abort after request finishes but before processing
+    if (signal?.aborted) throw new Error("Request aborted");
 
     let jsonStr = response.text || "{}";
     
@@ -356,9 +299,13 @@ export const generateCompanyDossier = async (companyName: string, industry: stri
       sources 
     };
 
-  } catch (error) {
-    console.error("Due Diligence Error:", error);
-    throw error;
+  } catch (error: any) {
+    if (error.message === "Request aborted") {
+      console.log("Due Diligence generation cancelled.");
+      return null; // Silent return on abort
+    }
+    console.warn("Due Diligence API failed, falling back to mock data.", error);
+    return MOCK.COMPANY_DOSSIER_MOCK;
   }
 };
 
@@ -370,18 +317,14 @@ export const generateMorningBriefing = async (profileName: string, activeOpportu
     const model = "gemini-2.5-flash";
     const response = await ai.models.generateContent({
       model,
-      contents: `Generate a short, punchy 3-sentence "Morning Briefing" for a C-Level executive named ${profileName}. 
-      Context: 
-      - They have ${activeOpportunities} active job opportunities.
-      - It is 8:00 AM.
-      - Tone: Professional, motivating, concise.
-      - Mention a random market update relevant to Tech/Finance in Europe.`,
+      contents: PROMPTS.MORNING_BRIEFING(profileName, activeOpportunities),
       config: {
         responseMimeType: "text/plain",
       }
     });
     return response.text;
   } catch (error) {
-    return `Good morning, ${profileName}. You have ${activeOpportunities} active opportunities requiring attention. Market indicators in DACH suggest a surge in leadership hiring. Let's execute the strategy.`;
+    console.warn("Morning Briefing API failed, falling back to mock data.", error);
+    return MOCK.MORNING_BRIEFING_MOCK;
   }
 };

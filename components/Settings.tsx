@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
-  Save, User, Shield, Zap, Bell, Globe, 
-  Linkedin, Mail, Calendar, ToggleLeft, ToggleRight, 
-  Check, Sliders, AlertTriangle, Upload, FileText, Briefcase, DollarSign, MapPin, Link as LinkIcon, Ghost, EyeOff, BarChart3
+  Save, User, Zap, Globe, 
+  Linkedin, Mail, ToggleLeft, ToggleRight, 
+  Check, Sliders, AlertTriangle, FileText, Briefcase, DollarSign, MapPin, Link as LinkIcon, Ghost, BarChart3
 } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { UserProfile, AppSettings } from '../types';
@@ -12,6 +12,13 @@ const Settings: React.FC = () => {
   
   const [activeTab, setActiveTab] = useState<'profile' | 'agents' | 'integrations'>('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
   
   // Local state for forms, synchronized with global state on mount/change
   const [profile, setProfile] = useState<UserProfile>(userProfile);
@@ -30,9 +37,11 @@ const Settings: React.FC = () => {
     updateUserProfile(profile);
     updateAppSettings(rules);
     
-    // Simulate API delay
+    // Simulate API delay, check mount status before state update
     setTimeout(() => {
-      setIsSaving(false);
+      if (isMounted.current) {
+        setIsSaving(false);
+      }
     }, 800);
   };
 

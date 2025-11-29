@@ -2,17 +2,20 @@ import React from 'react';
 import { LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Settings, LogOut, Building2 } from 'lucide-react';
 import { View } from '../types';
 import { useApp } from '../contexts/AppContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Sidebar: React.FC = () => {
-  const { currentView, setCurrentView, userProfile } = useApp();
+  const { userProfile } = useApp();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const navItems = [
-    { id: View.DASHBOARD, icon: LayoutDashboard, label: 'Command Center' },
-    { id: View.CV_ANALYSIS, icon: FileText, label: 'CV Architect' },
-    { id: View.OPPORTUNITIES, icon: Briefcase, label: 'Opportunity Mining' },
-    { id: View.RECRUITERS, icon: Users, label: 'Recruiter Agent' },
-    { id: View.COMMUNICATION, icon: MessageSquare, label: 'Comms Hub' },
-    { id: View.DUE_DILIGENCE, icon: Building2, label: 'Due Diligence' },
+    { id: View.DASHBOARD, icon: LayoutDashboard, label: 'Command Center', path: '/' },
+    { id: View.CV_ANALYSIS, icon: FileText, label: 'CV Architect', path: '/cv-analysis' },
+    { id: View.OPPORTUNITIES, icon: Briefcase, label: 'Opportunity Mining', path: '/opportunities' },
+    { id: View.RECRUITERS, icon: Users, label: 'Recruiter Agent', path: '/recruiters' },
+    { id: View.COMMUNICATION, icon: MessageSquare, label: 'Comms Hub', path: '/communication' },
+    { id: View.DUE_DILIGENCE, icon: Building2, label: 'Due Diligence', path: '/due-diligence' },
   ];
 
   return (
@@ -30,16 +33,16 @@ const Sidebar: React.FC = () => {
         {navItems.map(item => (
           <button
             key={item.id}
-            onClick={() => setCurrentView(item.id)}
+            onClick={() => navigate(item.path)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group ${
-              currentView === item.id 
+              location.pathname === item.path 
                 ? 'bg-brand-600/10 text-brand-400 border border-brand-600/20' 
                 : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
             }`}
           >
-            <item.icon size={20} className={currentView === item.id ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'} />
+            <item.icon size={20} className={location.pathname === item.path ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'} />
             <span className="font-medium text-sm">{item.label}</span>
-            {currentView === item.id && (
+            {location.pathname === item.path && (
               <div className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-400 shadow-[0_0_8px_#818CF8]"></div>
             )}
           </button>
@@ -48,9 +51,9 @@ const Sidebar: React.FC = () => {
 
       <div className="p-4 border-t border-slate-800">
         <button 
-          onClick={() => setCurrentView(View.SETTINGS)}
+          onClick={() => navigate('/settings')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-             currentView === View.SETTINGS 
+             location.pathname === '/settings' 
                 ? 'bg-slate-900 text-brand-400' 
                 : 'text-slate-400 hover:bg-slate-900 hover:text-slate-200'
           }`}

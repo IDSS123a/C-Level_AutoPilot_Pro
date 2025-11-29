@@ -89,6 +89,14 @@ export interface AgentLog {
 export interface CVAnalysisResult {
   summary: string;
   score: number;
+  sub_scores?: {
+    leadership: number;
+    leadership_rationale?: string;
+    impact: number;
+    impact_rationale?: string;
+    communication: number;
+    communication_rationale?: string;
+  };
   strengths: string[];
   weaknesses: string[];
   strategic_positioning: string;

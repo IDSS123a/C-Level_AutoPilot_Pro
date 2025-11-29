@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, Building2, BarChart3, AlertTriangle, Lightbulb, Users, HelpCircle, Loader2, Target, Globe, MessageSquare, Link, RotateCcw } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, Building2, BarChart3, AlertTriangle, Lightbulb, Users, HelpCircle, Loader2, Target, Globe, MessageSquare, Link, RotateCcw, ExternalLink } from 'lucide-react';
 import { generateCompanyDossier } from '../services/geminiService';
 import { CompanyDossier } from '../types';
 
@@ -9,21 +9,57 @@ const DueDiligence: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dossier, setDossier] = useState<CompanyDossier | null>(null);
+  
+  // AbortController Ref for Cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleGenerate = async () => {
     if (!companyName) return;
+    
+    // Cancel previous request if active
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create new controller
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setIsGenerating(true);
     setError(null);
     setDossier(null);
     
     try {
-      const result = await generateCompanyDossier(companyName, industry || "Technology");
-      setDossier(result);
-    } catch (err) {
+      const result = await generateCompanyDossier(
+        companyName, 
+        industry || "Technology",
+        controller.signal
+      );
+      
+      if (result) {
+        setDossier(result);
+      }
+    } catch (err: any) {
+      // Ignore if aborted
+      if (err.message === "Request aborted") return;
+      
       console.error(err);
       setError("Failed to generate dossier. The AI service may be temporarily unavailable or the company could not be analyzed.");
     } finally {
-      setIsGenerating(false);
+      // Only unset loading if this is still the active request
+      if (abortControllerRef.current === controller) {
+        setIsGenerating(false);
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -74,7 +110,7 @@ const DueDiligence: React.FC = () => {
                 className="bg-brand-600 hover:bg-brand-500 text-white px-8 py-3 rounded-lg font-medium flex items-center transition-all shadow-lg shadow-brand-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {isGenerating ? <Loader2 className="animate-spin mr-2"/> : <BarChart3 className="mr-2"/>}
-                Generate Dossier
+                {isGenerating ? 'Analyzing...' : 'Generate Dossier'}
             </button>
         </div>
       </div>
@@ -227,10 +263,14 @@ const DueDiligence: React.FC = () => {
                            href={source.uri} 
                            target="_blank" 
                            rel="noopener noreferrer" 
-                           className="flex items-center p-3 bg-slate-900 border border-slate-800 rounded-lg hover:border-brand-500/50 hover:bg-slate-800 transition-colors group"
+                           className="flex items-start p-3 bg-slate-900 border border-slate-800 rounded-lg hover:border-brand-500/50 hover:bg-slate-800 transition-all group"
                          >
-                           <Globe size={14} className="text-slate-500 group-hover:text-brand-400 mr-2 flex-shrink-0" />
-                           <span className="text-xs text-slate-300 truncate group-hover:text-brand-200">{source.title}</span>
+                           <Globe size={16} className="text-slate-500 group-hover:text-brand-400 mr-3 mt-0.5 flex-shrink-0" />
+                           <div className="flex-1 min-w-0">
+                             <p className="text-xs font-medium text-slate-300 truncate group-hover:text-brand-200">{source.title}</p>
+                             <p className="text-[10px] text-slate-500 truncate mt-0.5 group-hover:text-slate-400">{source.uri}</p>
+                           </div>
+                           <ExternalLink size={12} className="text-slate-600 group-hover:text-brand-400 ml-2 mt-0.5 flex-shrink-0" />
                          </a>
                        ))}
                      </div>

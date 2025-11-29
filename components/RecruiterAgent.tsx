@@ -42,7 +42,26 @@ const MOCK_RECRUITERS: Recruiter[] = [
 const RecruiterAgent: React.FC = () => {
   const { userProfile } = useApp();
   
-  const [recruiters, setRecruiters] = useState<Recruiter[]>(MOCK_RECRUITERS);
+  // Persist Recruiters with Safe Parse
+  const [recruiters, setRecruiters] = useState<Recruiter[]>(() => {
+    try {
+      const saved = localStorage.getItem('recruiters_data');
+      return saved ? JSON.parse(saved) : MOCK_RECRUITERS;
+    } catch (e) {
+      console.warn("Failed to load recruiters from storage, using mock.", e);
+      return MOCK_RECRUITERS;
+    }
+  });
+
+  // Persist Global Signature with Safe Parse
+  const [globalSignature, setGlobalSignature] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('global_signature');
+    } catch (e) {
+      return null;
+    }
+  });
+
   const [selectedRecruiter, setSelectedRecruiter] = useState<Recruiter | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedSequence, setGeneratedSequence] = useState<{
@@ -56,7 +75,6 @@ const RecruiterAgent: React.FC = () => {
   // Signature State
   const [showSigModal, setShowSigModal] = useState(false);
   const [targetRecruiterId, setTargetRecruiterId] = useState<string | null>(null);
-  const [globalSignature, setGlobalSignature] = useState<string | null>(null);
   
   // Initialize signature profile from Global User Profile
   const [sigProfile, setSigProfile] = useState({
@@ -68,6 +86,25 @@ const RecruiterAgent: React.FC = () => {
     website: userProfile.website,
     disclaimer: "Confidentiality Notice: This e-mail message, including any attachments, is for the sole use of the intended recipient(s)."
   });
+
+  // Save changes to localStorage safely
+  useEffect(() => {
+    try {
+      localStorage.setItem('recruiters_data', JSON.stringify(recruiters));
+    } catch (e) {
+      console.warn("Failed to save recruiters to storage", e);
+    }
+  }, [recruiters]);
+
+  useEffect(() => {
+    if (globalSignature) {
+      try {
+        localStorage.setItem('global_signature', globalSignature);
+      } catch (e) {
+        console.warn("Failed to save signature", e);
+      }
+    }
+  }, [globalSignature]);
   
   // Update local signature state when global profile changes
   useEffect(() => {
