@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { FileText, BrainCircuit, Scale, Loader2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { FileText, BrainCircuit, Scale, Loader2, Upload, FileType } from 'lucide-react';
 import { analyzeCVContent, analyzeSkillGap } from '../services/geminiService';
 import { CVAnalysisResult, SkillGapAnalysisResult } from '../types';
 import CVResults from './cv/CVResults';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Set worker source for PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
 const CVAnalyzer: React.FC = () => {
   const [cvText, setCvText] = useState<string>('');
@@ -10,10 +14,68 @@ const CVAnalyzer: React.FC = () => {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzingGap, setIsAnalyzingGap] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
   
   const [result, setResult] = useState<CVAnalysisResult | null>(null);
   const [gapResult, setGapResult] = useState<SkillGapAnalysisResult | null>(null);
   const [activeTab, setActiveTab] = useState<'general' | 'gap'>('general');
+
+  // File input ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track component mount status to prevent state updates on unmount
+  const isMounted = useRef(true);
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      alert('Please upload a valid PDF file.');
+      return;
+    }
+
+    setIsParsing(true);
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let extractedText = '';
+
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+        extractedText += pageText + '\n';
+      }
+
+      if (isMounted.current) {
+        setCvText(extractedText);
+      }
+    } catch (error) {
+      console.error('Error parsing PDF:', error);
+      alert('Failed to extract text from PDF. Please try pasting the text manually.');
+    } finally {
+      if (isMounted.current) {
+        setIsParsing(false);
+        // Reset input value so same file can be selected again if needed
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
+  };
 
   const handleAnalyze = async () => {
     if (!cvText.trim()) return;
@@ -21,11 +83,15 @@ const CVAnalyzer: React.FC = () => {
     setActiveTab('general');
     try {
       const data = await analyzeCVContent(cvText);
-      setResult(data);
+      if (isMounted.current) {
+        setResult(data);
+      }
     } catch (error) {
       console.error(error);
     } finally {
-      setIsAnalyzing(false);
+      if (isMounted.current) {
+        setIsAnalyzing(false);
+      }
     }
   };
 
@@ -35,11 +101,15 @@ const CVAnalyzer: React.FC = () => {
     setActiveTab('gap');
     try {
       const data = await analyzeSkillGap(cvText, jobDesc);
-      setGapResult(data);
+      if (isMounted.current) {
+        setGapResult(data);
+      }
     } catch (error) {
       console.error(error);
     } finally {
-      setIsAnalyzingGap(false);
+      if (isMounted.current) {
+        setIsAnalyzingGap(false);
+      }
     }
   };
 
@@ -81,13 +151,42 @@ VP Engineering - TechStart Inc (2015 - 2019)
           
           <div className="flex-1 flex flex-col gap-4 min-h-0">
               <div className="flex-1 flex flex-col min-h-0">
-                  <label className="text-xs text-slate-400 font-medium mb-2">YOUR CV CONTENT</label>
-                  <textarea 
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-4 text-slate-300 focus:ring-1 focus:ring-brand-500 focus:border-brand-500 resize-none font-mono text-xs leading-relaxed placeholder:text-slate-700"
-                    placeholder="Paste your CV text here..."
-                    value={cvText}
-                    onChange={(e) => setCvText(e.target.value)}
-                  />
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-xs text-slate-400 font-medium">YOUR CV CONTENT</label>
+                    <button 
+                      onClick={triggerFileUpload}
+                      disabled={isParsing}
+                      className="flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-brand-400 px-3 py-1.5 rounded transition-colors"
+                    >
+                      {isParsing ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                      {isParsing ? 'Parsing PDF...' : 'Upload PDF'}
+                    </button>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef} 
+                      onChange={handleFileUpload} 
+                      accept=".pdf" 
+                      className="hidden" 
+                    />
+                  </div>
+                  
+                  <div className="relative flex-1 flex flex-col">
+                    <textarea 
+                      className={`flex-1 bg-slate-950 border border-slate-800 rounded-lg p-4 text-slate-300 focus:ring-1 focus:ring-brand-500 focus:border-brand-500 resize-none font-mono text-xs leading-relaxed placeholder:text-slate-700 ${isParsing ? 'opacity-50' : ''}`}
+                      placeholder="Paste your CV text here or click 'Upload PDF'..."
+                      value={cvText}
+                      onChange={(e) => setCvText(e.target.value)}
+                      disabled={isParsing}
+                    />
+                    {isParsing && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-slate-900/80 backdrop-blur-sm px-4 py-2 rounded-lg flex items-center gap-2 border border-slate-700">
+                          <Loader2 size={16} className="text-brand-500 animate-spin" />
+                          <span className="text-sm font-medium text-white">Extracting text...</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
               </div>
 
               <div className="h-40 flex flex-col flex-shrink-0">
@@ -107,9 +206,9 @@ VP Engineering - TechStart Inc (2015 - 2019)
           <div className="mt-4 flex gap-3">
             <button
               onClick={handleAnalyze}
-              disabled={isAnalyzing || !cvText}
+              disabled={isAnalyzing || !cvText || isParsing}
               className={`flex-1 py-2.5 rounded-lg font-medium flex items-center justify-center transition-all ${
-                isAnalyzing || !cvText
+                isAnalyzing || !cvText || isParsing
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
                   : 'bg-brand-600 hover:bg-brand-500 text-white shadow-lg shadow-brand-500/20'
               }`}
@@ -119,9 +218,9 @@ VP Engineering - TechStart Inc (2015 - 2019)
             </button>
             <button
               onClick={handleGapAnalyze}
-              disabled={isAnalyzingGap || !cvText || !jobDesc}
+              disabled={isAnalyzingGap || !cvText || !jobDesc || isParsing}
               className={`flex-1 py-2.5 rounded-lg font-medium flex items-center justify-center transition-all ${
-                isAnalyzingGap || !cvText || !jobDesc
+                isAnalyzingGap || !cvText || !jobDesc || isParsing
                   ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
               }`}

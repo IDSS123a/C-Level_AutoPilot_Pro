@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Linkedin, Mail, MessageSquare, Loader2, Copy, Check, Clock, Send, PenTool, X, Sparkles, FileSignature } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 import { Recruiter } from '../types';
@@ -41,6 +41,13 @@ const MOCK_RECRUITERS: Recruiter[] = [
 
 const RecruiterAgent: React.FC = () => {
   const { userProfile } = useApp();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
   
   // Persist Recruiters with Safe Parse
   const [recruiters, setRecruiters] = useState<Recruiter[]>(() => {
@@ -124,6 +131,7 @@ const RecruiterAgent: React.FC = () => {
   const [isGeneratingSig, setIsGeneratingSig] = useState(false);
 
   const handleGenerateSequence = async (recruiter: Recruiter) => {
+    if (!recruiter) return;
     setSelectedRecruiter(recruiter);
     setGeneratedSequence(null);
     setIsGenerating(true);
@@ -134,20 +142,24 @@ const RecruiterAgent: React.FC = () => {
         recruiter.company, 
         `${userProfile.title}, specialized in ${userProfile.industries}, looking for ${userProfile.targetRole}.`
       );
-      setGeneratedSequence({
-        linkedin: content.linkedin_message,
-        initial_email: {
-            subject: content.initial_email_subject,
-            body: content.initial_email_body
-        },
-        follow_up_7d: content.follow_up_7d_body,
-        follow_up_14d: content.follow_up_14d_body
-      });
-      setActiveTab('initial');
+      if (isMounted.current) {
+        setGeneratedSequence({
+            linkedin: content.linkedin_message,
+            initial_email: {
+                subject: content.initial_email_subject,
+                body: content.initial_email_body
+            },
+            follow_up_7d: content.follow_up_7d_body,
+            follow_up_14d: content.follow_up_14d_body
+        });
+        setActiveTab('initial');
+      }
     } catch (e) {
       console.error(e);
     } finally {
-      setIsGenerating(false);
+      if (isMounted.current) {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -155,14 +167,16 @@ const RecruiterAgent: React.FC = () => {
     setIsGeneratingSig(true);
     try {
       const result = await generateEmailSignature(sigProfile);
-      if (result.signatures) {
+      if (isMounted.current && result.signatures) {
         setGeneratedSignatures(result.signatures);
         setModalSelectedSignature(result.signatures[0]?.html_content);
       }
     } catch (error) {
       console.error(error);
     } finally {
-      setIsGeneratingSig(false);
+      if (isMounted.current) {
+        setIsGeneratingSig(false);
+      }
     }
   };
 
@@ -186,8 +200,8 @@ const RecruiterAgent: React.FC = () => {
           : r
       ));
       
-      // If the currently selected recruiter in the main view is the target, update state
-      if (selectedRecruiter?.id === targetRecruiterId) {
+      // If the currently selected recruiter in the main view is the target, update state safely
+      if (selectedRecruiter && selectedRecruiter.id === targetRecruiterId) {
         setSelectedRecruiter(prev => prev ? { ...prev, assigned_signature: modalSelectedSignature } : null);
       }
     } else {
@@ -358,7 +372,7 @@ const RecruiterAgent: React.FC = () => {
                           <div className="bg-slate-950 border border-slate-800 rounded-lg p-4">
                               <div className="flex justify-between mb-2 text-blue-400 text-xs font-semibold uppercase tracking-wider">
                                   <span>LinkedIn Note</span>
-                                  <span>{generatedSequence.linkedin?.length}/300</span>
+                                  <span>{generatedSequence.linkedin?.length || 0}/300</span>
                               </div>
                               <div className="text-slate-300 text-sm leading-relaxed font-mono bg-slate-900/50 p-3 rounded border border-slate-800/50">
                                   {generatedSequence.linkedin}

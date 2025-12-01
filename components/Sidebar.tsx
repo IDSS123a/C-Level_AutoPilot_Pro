@@ -1,5 +1,5 @@
-import React from 'react';
-import { LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Settings, LogOut, Building2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, FileText, Briefcase, Users, MessageSquare, Settings, LogOut, Building2, Sun, Moon, Linkedin } from 'lucide-react';
 import { View } from '../types';
 import { useApp } from '../contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,6 +8,19 @@ const Sidebar: React.FC = () => {
   const { userProfile } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
 
   const navItems = [
     { id: View.DASHBOARD, icon: LayoutDashboard, label: 'Command Center', path: '/' },
@@ -51,6 +64,14 @@ const Sidebar: React.FC = () => {
 
       <div className="p-4 border-t border-slate-800">
         <button 
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-slate-400 hover:bg-slate-900 hover:text-slate-200 mb-1"
+        >
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          <span className="font-medium text-sm">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+        </button>
+
+        <button 
           onClick={() => navigate('/settings')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
              location.pathname === '/settings' 
@@ -66,7 +87,20 @@ const Sidebar: React.FC = () => {
             {userProfile.name.charAt(0)}
           </div>
           <div className="flex-1 overflow-hidden">
-            <p className="text-sm font-medium text-white truncate">{userProfile.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-white truncate">{userProfile.name}</p>
+              {userProfile.linkedin && (
+                <a 
+                  href={userProfile.linkedin.startsWith('http') ? userProfile.linkedin : `https://${userProfile.linkedin}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#0077b5] hover:text-[#00a0dc] transition-colors"
+                  title="View LinkedIn Profile"
+                >
+                  <Linkedin size={14} />
+                </a>
+              )}
+            </div>
             <p className="text-xs text-slate-500 truncate">{userProfile.title}</p>
           </div>
           <LogOut size={16} className="text-slate-500 hover:text-white cursor-pointer" />

@@ -6,6 +6,53 @@ import * as MOCK from '../lib/mockData';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
+ * Robust JSON extraction helper.
+ * Handles:
+ * 1. Markdown code blocks (```json ... ```)
+ * 2. Conversational filler text ("Here is your JSON: ...")
+ * 3. Raw JSON
+ */
+const cleanAndParseJSON = (text: string | undefined): any => {
+  if (!text) return {};
+  
+  try {
+    // Attempt 1: Clean parse
+    return JSON.parse(text);
+  } catch (e) {
+    // Attempt 2: Remove Markdown wrappers
+    let clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      return JSON.parse(clean);
+    } catch (e2) {
+      // Attempt 3: Extract the first JSON object {} or array []
+      const firstOpenBrace = clean.indexOf('{');
+      const lastCloseBrace = clean.lastIndexOf('}');
+      
+      if (firstOpenBrace !== -1 && lastCloseBrace !== -1) {
+        try {
+          return JSON.parse(clean.substring(firstOpenBrace, lastCloseBrace + 1));
+        } catch (e3) {
+           // Continue to array check
+        }
+      }
+
+      const firstOpenBracket = clean.indexOf('[');
+      const lastCloseBracket = clean.lastIndexOf(']');
+      if (firstOpenBracket !== -1 && lastCloseBracket !== -1) {
+        try {
+          return JSON.parse(clean.substring(firstOpenBracket, lastCloseBracket + 1));
+        } catch (e4) {
+          // Failure
+        }
+      }
+      
+      console.warn("Failed to extract JSON from response:", text.substring(0, 100) + "...");
+      throw new Error("JSON Parsing Failed");
+    }
+  }
+};
+
+/**
  * CV ANALYSIS AGENT
  * Uses Gemini 3 Pro for deep semantic understanding and gap analysis.
  */
@@ -42,8 +89,7 @@ export const analyzeCVContent = async (cvText: string) => {
       }
     });
 
-    const text = response.text || "{}";
-    const json = JSON.parse(text);
+    const json = cleanAndParseJSON(response.text);
     return {
       score: json.score || 0,
       summary: json.summary || "No summary available.",
@@ -85,8 +131,7 @@ export const analyzeSkillGap = async (cvText: string, jobDescription: string) =>
         }
       }
     });
-    const text = response.text || "{}";
-    const json = JSON.parse(text);
+    const json = cleanAndParseJSON(response.text);
     return {
       match_score: json.match_score || 0,
       missing_critical_skills: json.missing_critical_skills || [],
@@ -124,7 +169,7 @@ export const analyzeOpportunity = async (jobDescription: string, cvContext: stri
         }
       }
     });
-    const json = JSON.parse(response.text || "{}");
+    const json = cleanAndParseJSON(response.text);
     return {
       fit: json.fit || "Analysis unavailable",
       gaps: json.gaps || [],
@@ -164,7 +209,7 @@ export const generateOutreachSequence = async (recruiterName: string, role: stri
         }
       }
     });
-    return JSON.parse(response.text || "{}");
+    return cleanAndParseJSON(response.text);
   } catch (error) {
     console.warn("Outreach Generation API failed, falling back to mock data.", error);
     return MOCK.OUTREACH_SEQUENCE_MOCK;
@@ -195,7 +240,7 @@ export const generateCampaignStrategy = async (metrics: any) => {
       }
     });
     
-    const json = JSON.parse(response.text || "{}");
+    const json = cleanAndParseJSON(response.text);
     return {
       focus_of_the_week: json.focus_of_the_week || "Analyzing campaign data...",
       top_priorities: json.top_priorities || [],
@@ -236,7 +281,7 @@ export const generateEmailSignature = async (userProfile: any) => {
         }
       }
     });
-    const json = JSON.parse(response.text || "{}");
+    const json = cleanAndParseJSON(response.text);
     return { signatures: json.signatures || [] };
   } catch (error) {
     console.warn("Signature Generation API failed, falling back to mock data.", error);
@@ -267,12 +312,7 @@ export const generateCompanyDossier = async (companyName: string, industry: stri
     // Check abort after request finishes but before processing
     if (signal?.aborted) throw new Error("Request aborted");
 
-    let jsonStr = response.text || "{}";
-    
-    // Clean up Markdown formatting if present
-    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    const json = JSON.parse(jsonStr);
+    const json = cleanAndParseJSON(response.text);
 
     // Extract grounding chunks (sources) from metadata
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];

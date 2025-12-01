@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import { AppProvider } from './contexts/AppContext';
@@ -16,6 +16,13 @@ const DueDiligence = lazy(() => import('./components/DueDiligence'));
 
 const AutonomousAgentSimulator: React.FC = () => {
   const { addAgentLog } = useLogStore();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const activities = [
@@ -30,7 +37,7 @@ const AutonomousAgentSimulator: React.FC = () => {
     ];
 
     const interval = setInterval(() => {
-      if (Math.random() > 0.65) { 
+      if (isMounted.current && Math.random() > 0.65) { 
         const activity = activities[Math.floor(Math.random() * activities.length)];
         addAgentLog({
           agent: activity.type as any,
